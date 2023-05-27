@@ -70,10 +70,10 @@ func (h *UserHandler) HandleDeleteUser(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) HandlePutUser(c *fiber.Ctx) error {
-	var values bson.M
+	var params types.UpdateUserParams
 	userID := c.Params("id") 
 
-	if err := c.BodyParser(&values); err != nil {
+	if err := c.BodyParser(&params); err != nil {
 		return err
 	}
 
@@ -84,7 +84,7 @@ func (h *UserHandler) HandlePutUser(c *fiber.Ctx) error {
 
 	filter := bson.M{"_id": oid}
 
-	if err := h.userStore.UpdateUser(c.Context(), filter, values); err != nil {
+	if err := h.userStore.UpdateUser(c.Context(), filter, params); err != nil {
 		return err
 	}
 
