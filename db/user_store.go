@@ -15,6 +15,8 @@ type UserStore interface {
 	GetUserById(context.Context, string) (*types.User, error)
 	GetUsers(context.Context) ([]*types.User, error)
 	InsertUser(context.Context, *types.User) (*types.User, error)
+	DeleteUser(context.Context, string) error
+	UpdateUser(ctx context.Context, filter, update bson.M) error
 }
 
 type MongoUserStore struct {
@@ -41,8 +43,37 @@ func (s *MongoUserStore) InsertUser(ctx context.Context, user *types.User) (*typ
 	return user, nil
 }
 
+func (s *MongoUserStore) UpdateUser(ctx context.Context, filter, values bson.M) error {
+	update:= bson.D{
+		{
+			"$set", values,
+		},
+	}
+
+	_, err := s.coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MongoUserStore) DeleteUser(ctx context.Context, id string) error {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("id is incorrect")
+	}
+
+	_, err = s.coll.DeleteOne(ctx, bson.M{"_id": oid})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
 func (s *MongoUserStore) GetUserById(ctx context.Context, id string) (*types.User, error) {
-	// validate the correctnes of the id
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, fmt.Errorf("id is incorrect")
