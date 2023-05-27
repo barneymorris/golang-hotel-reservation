@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/betelgeusexru/golang-hotel-reservation/types"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,7 +33,7 @@ func (s *MongoUserStore) GetUserById(ctx context.Context, id string) (*types.Use
 	// validate the correctnes of the id
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("id is incorrect")
 	}
 	
 	var user types.User
