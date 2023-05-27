@@ -40,7 +40,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mongoStore := db.NewMongoUserStore(client)
+	mongoStore := db.NewMongoUserStore(client, db.DBNAME)
 	userHandler := api.NewUserHandler(mongoStore)
 
 	app := fiber.New(config)
