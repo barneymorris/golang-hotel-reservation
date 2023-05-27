@@ -1,10 +1,7 @@
 package api
 
 import (
-	"context"
-
 	"github.com/betelgeusexru/golang-hotel-reservation/db"
-	"github.com/betelgeusexru/golang-hotel-reservation/types"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -20,9 +17,7 @@ func NewUserHandler(userStore db.UserStore) *UserHandler {
 
 func (h *UserHandler) HandleGetUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	ctx := context.Background()
-	
-	user, err := h.userStore.GetUserById(ctx, id)
+	user, err := h.userStore.GetUserById(c.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -31,10 +26,10 @@ func (h *UserHandler) HandleGetUser(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) HandleGetUsers(c *fiber.Ctx) error {
-	u := types.User{
-		FirstName: "James",
-		LastName: "Smith",
+	users, err := h.userStore.GetUsers(c.Context())
+	if err != nil {
+		return err
 	}
 
-	return c.JSON(u)
+	return c.JSON(users)
 }
