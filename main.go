@@ -13,9 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const dbname = "hotel-reservation"
-const userColl = "users"
-
 var config = fiber.Config{
 	ErrorHandler: func(ctx *fiber.Ctx, err error) error {
         code := fiber.StatusInternalServerError
@@ -39,8 +36,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mongoStore := db.NewMongoUserStore(client, db.DBNAME)
-	userHandler := api.NewUserHandler(mongoStore)
+	userStore := db.NewMongoUserStore(client)
+	hotelStore := db.NewMongoHotelStore(client)
+	roomStore := db.NewMongoRoomStore(client, hotelStore)
+
+	userHandler := api.NewUserHandler(userStore)
+	hotelHandler := api.NewHotelHandler(hotelStore, roomStore)
 
 	app := fiber.New(config)
 	apiv1 := app.Group("/api/v1")
@@ -50,6 +51,8 @@ func main() {
 	apiv1.Post("/user", userHandler.HandlePostUser)
 	apiv1.Get("/user", userHandler.HandleGetUsers)
 	apiv1.Get("/user/:id", userHandler.HandleGetUser)
+
+	apiv1.Get("/hotel", hotelHandler.HandleGetHotels)
 	
 	app.Listen(*listenAddr);
 }
