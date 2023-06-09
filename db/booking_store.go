@@ -13,6 +13,7 @@ type BookingStore interface {
 	InsertBooking(context.Context, *types.Booking) (*types.Booking, error)
 	GetBookings(context.Context, bson.M) ([]*types.Booking, error)
 	GetBookingById(ctx context.Context, id string) (*types.Booking, error)
+	UpdateBooking(context.Context, string, bson.M) error
 }
 
 
@@ -30,7 +31,21 @@ func NewMongoBookingStore(client *mongo.Client) *MongoBookingStore {
 	}
 }
 
-func (s *MongoBookingStore) GetBookings(ctx context.Context, filter bson.M) ([]*types.Booking, error) {
+func (s *MongoBookingStore) UpdateBooking(ctx context.Context, id string, update bson.M) error {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	m := bson.M{
+		"$set": update,
+	}
+
+	_, err = s.coll.UpdateByID(ctx, oid, m)
+	return err
+}
+
+func (s *MongoBookingStore) GetBookings(ctx context.Context, filter bson.M) ([]*types. Booking, error) {
 	curr, err := s.coll.Find(ctx, filter)
 	if err != nil {
 		return nil, err
