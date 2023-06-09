@@ -1,12 +1,14 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/betelgeusexru/golang-hotel-reservation/db"
 	"github.com/betelgeusexru/golang-hotel-reservation/types"
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -22,13 +24,35 @@ type RoomHandler struct {
 
 func NewRoomHandler(store *db.Store) *RoomHandler {
 	return &RoomHandler{
-		store: store,
+		store: store,	
 	}
+}
+
+func (p BookRoomParams) validate () error {
+	now := time.Now()
+	if now.After(p.FromDate) || now.After(p.TillDate) {
+		return fiber.NewError(400, "cannot book a room in the past")
+	}
+
+	return nil
+}
+
+func (h *RoomHandler) HandleGetRooms(c *fiber.Ctx) error {
+	rooms, err := h.store.Room.GetRooms(c.Context(), bson.M{})
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(rooms)
 }
 
 func (h *RoomHandler) HandleBookRoom(c *fiber.Ctx) error {
 	var params BookRoomParams
 	if err := c.BodyParser(&params); err != nil {
+		return err
+	}
+
+	if err := params.validate(); err != nil {
 		return err
 	}
 
@@ -41,6 +65,16 @@ func (h *RoomHandler) HandleBookRoom(c *fiber.Ctx) error {
 	user, ok := c.Context().Value("user").(*types.User)
 	if !ok {
 		return fiber.NewError(500, "Internal server error")
+	} 
+
+	ok, err = h.isRoomAvailableForBooking(c.Context(), roomOID, params)
+
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return fiber.NewError(400, fmt.Sprintf("room %s already booked", c.Params("id")))
 	}
 
 	booking := types.Booking{
@@ -51,6 +85,31 @@ func (h *RoomHandler) HandleBookRoom(c *fiber.Ctx) error {
 		NumPersons: params.NumPersons,
 	}
 
-	fmt.Println(booking)
-	return nil
+	inserted, err := h.store.Booking.InsertBooking(c.Context(), &booking)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(inserted) 
+}
+
+func (h *RoomHandler) isRoomAvailableForBooking(ctx context.Context, roomID primitive.ObjectID, params BookRoomParams) (bool, error) {
+	where := bson.M{
+		"roomID": roomID,
+		"fromDate": bson.M{
+			"$gte": params.FromDate,
+		},
+		"tillDate": bson.M{
+			"$lte": params.TillDate,
+		},
+	}
+
+	bookings, err := h.store.Booking.GetBookings(ctx, where)
+	if err != nil {
+		return false, err
+	}
+
+	ok := len(bookings) == 0
+
+	return ok, nil
 }
